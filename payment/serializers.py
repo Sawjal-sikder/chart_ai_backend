@@ -5,12 +5,15 @@ class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = "__all__"
-        read_only_fields = ("stripe_price_id",)
+        read_only_fields = ("stripe_price_id","stripe_product_id")
+        
+    def get_price_display(self, obj):
+        return f"${obj.amount / 100:.2f} per {obj.interval_count} {obj.get_interval_display()}{'s' if obj.interval_count > 1 else ''}"
         
 class PlanUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
-        fields = ["name", "interval", "amount", "trial_days", "active"]
+        fields = ["name", "interval","interval_count", "amount", "description", "active"]
 
 class SubscriptionSerializer(serializers.ModelSerializer):
     plan = PlanSerializer(read_only=True)

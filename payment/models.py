@@ -5,16 +5,38 @@ User = get_user_model()
 
 
 class Plan(models.Model):
-    name = models.CharField(max_length=50)
+    Interval_choices = (("day", "day"),
+                        ("week", "week"), 
+                        ("month", "month"), 
+                        ("year", "year"))
+    
+    name = models.CharField(max_length=50, unique=True)
     stripe_product_id = models.CharField(max_length=255, blank=True, null=True)  
-    stripe_price_id = models.CharField(max_length=255)
-    amount = models.PositiveIntegerField(default=0)  
-    interval = models.CharField(max_length=20, choices=(("month", "Month"), ("year", "Year")))
+    stripe_price_id = models.CharField(max_length=255, blank=True, null=True)
+    amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")  
+    interval = models.CharField(max_length=20, choices=Interval_choices, default="month")
+    interval_count = models.PositiveIntegerField(default=1)
+    description = models.TextField(blank=True, null=True)
     trial_days = models.PositiveIntegerField(default=0)
     active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['amount']
+        verbose_name = "Subscription Plan"
+        verbose_name_plural = "Subscription Plans"
 
     def __str__(self):
-        return f"{self.name} ({self.interval}) - ${self.amount / 100}"
+        return (
+            f"{self.name} "
+            f"({self.interval_count} {self.get_interval_display()}{'s' if self.interval_count > 1 else ''}) "
+            f"- ${self.amount / 100:.2f}"
+        )
+
+    def stripe_recurring(self):
+        return {
+            "interval": self.interval,
+            "interval_count": self.interval_count,
+        }
 
 
 
@@ -28,7 +50,6 @@ class Subscription(models.Model):
         default="pending",
         choices=[
             ("pending", "Pending"),
-            ("trialing", "Trialing"), 
             ("active", "Active"),
             ("past_due", "Past Due"),
             ("canceled", "Canceled"),
@@ -41,20 +62,19 @@ class Subscription(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def is_active(self):
-        return self.status in ["trialing", "active"]
+        return self.status in ["active"]
 
-    def is_trial(self):
-        return self.status == "trialing"
+
 
     def is_paid_active(self):
         return self.status == "active"
 
     @classmethod
     def get_user_active_subscription(cls, user):
-        """Get user's active subscription (trialing or active)"""
+        """Get user's active subscription active"""
         return cls.objects.filter(
             user=user, 
-            status__in=['trialing', 'active']
+            status='active'
         ).first()
 
     def __str__(self):

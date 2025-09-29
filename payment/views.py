@@ -85,50 +85,63 @@ class PlanListCreateView(generics.ListCreateAPIView):
     serializer_class = PlanSerializer
 
     def create(self, request, *args, **kwargs):
-        """
-        Create Stripe Product + Price, then save in Plan model.
-        """
-        name = request.data.get("name")
-        interval = request.data.get("interval")  # "month" or "year"
-        amount_usd = request.data.get("amount")  # in USD
-        if amount_usd is not None:
-          try:
-            amount = int(float(amount_usd) * 100)  # convert USD to cents
-          except ValueError:
-            return Response({"error": "Invalid amount format"}, status=400)
-        else:
-          amount = None
-        trial_days = request.data.get("trial_days", 0)
+        data = request.data.copy()
+
+        # Convert amount from USD to cents
+        try:
+            data["amount"] = int(float(data.get("amount", 0)) * 100)
+        except ValueError:
+            return Response({"error": "Invalid amount format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        name = data.get("name")
+        interval = data.get("interval")
+        interval_count = int(data.get("interval_count", 1))
+        description = data.get("description", "")
+        amount = data.get("amount")
+        trial_days = int(data.get("trial_days", 0))
 
         if not all([name, interval, amount]):
-            return Response({"error": "name, interval, amount required"}, status=400)
+            return Response({"error": "name, interval, amount required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            product = stripe.Product.create(name=name)
-
-            price = stripe.Price.create(
-                product=product.id,
-                unit_amount=int(amount),
-                currency="usd",
-                recurring={"interval": interval},
+            # Create product on Stripe
+            product = stripe.Product.create(
+                name=name,
+                description=description
             )
 
-            plan = Plan.objects.create(
-                  name=name,
-                  stripe_product_id=product.id,
-                  stripe_price_id=price.id,
-                  amount=int(amount),
-                  interval=interval,
-                  trial_days=trial_days,
-                  active=True
-                  )
+            # Create price on Stripe
+            price = stripe.Price.create(
+                product=product.id,
+                unit_amount=amount,
+                currency="usd",
+                recurring={
+                    "interval": interval,
+                    "interval_count": interval_count,
+                },
+            )
 
+            # Save to DB
+            plan = Plan.objects.create(
+                name=name,
+                stripe_product_id=product.id,
+                stripe_price_id=price.id,
+                amount=amount,
+                interval=interval,
+                interval_count=interval_count,
+                description=description,
+                trial_days=trial_days,
+                active=True,
+            )
 
             serializer = self.get_serializer(plan)
-            return Response(serializer.data, status=201)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        except stripe.error.StripeError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class PlanUpdateView(generics.RetrieveUpdateAPIView):

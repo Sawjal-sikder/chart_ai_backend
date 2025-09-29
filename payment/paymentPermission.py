@@ -10,7 +10,7 @@ class SubscriptionRequired(APIException):
 
 class HasActiveSubscription(permissions.BasePermission):
     """
-    Allows access only to users with active or trialing subscription.
+    Allows access only to users with active subscription.
     """
 
     message = "Please purchase a subscription."

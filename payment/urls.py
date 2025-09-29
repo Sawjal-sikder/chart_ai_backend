@@ -8,6 +8,8 @@ urlpatterns = [
       path("checkout-status/", CheckoutSessionStatusView.as_view(), name="checkout-status"),
       path("subscription-status/", UserSubscriptionStatusView.as_view(), name="subscription-status"),
       path("webhook/", stripe_webhook, name="stripe-webhook"),
+      
+      # stripe subscription plans
       path("plans/", PlanListCreateView.as_view(), name="plan-list-create"),
       path("plans/<int:id>/", PlanUpdateView.as_view(), name="plan-update"),
       path("test-referral-benefits/", TestReferralBenefitsView.as_view(), name="test-referral-benefits"),
