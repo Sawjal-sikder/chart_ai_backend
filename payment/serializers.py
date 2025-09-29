@@ -7,8 +7,21 @@ class PlanSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ("stripe_price_id","stripe_product_id")
         
-    def get_price_display(self, obj):
-        return f"${obj.amount / 100:.2f} per {obj.interval_count} {obj.get_interval_display()}{'s' if obj.interval_count > 1 else ''}"
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        # Convert amount from cents to dollars
+        monthly_amount = float(instance.amount) / 100
+        representation['amount'] = monthly_amount
+        
+        # Calculate total cost based on interval_count
+        total_cost = monthly_amount * instance.interval_count
+        representation['total_cost'] = round(total_cost, 2)
+        
+        # Build price_display string
+        representation['price_display'] = f"$ {monthly_amount}/month"
+        
+        return representation
         
 class PlanUpdateSerializer(serializers.ModelSerializer):
     class Meta:
