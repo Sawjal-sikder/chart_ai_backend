@@ -44,31 +44,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
-    referral_code = models.CharField(max_length=50, blank=True, null=True)
-    referred_by = models.CharField(max_length=50, blank=True, null=True)
-    my_referral_link = models.URLField(max_length=200, blank=True, null=True)
-    favorite_item = models.PositiveIntegerField(default=3)
-    is_unlimited = models.BooleanField(default=False)
-    is_premium = models.BooleanField(default=False)
-    premium_expiry = models.DateTimeField(blank=True, null=True)
-    package_expiry = models.DateTimeField(blank=True, null=True)
-    create_date = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['full_name', 'phone_number']
-
-    
-    def save(self, *args, **kwargs):
-        if not self.referral_code:
-            self.referral_code = str(uuid.uuid4())[:10].upper()
-
-        if not self.my_referral_link:
-            base_url = getattr(settings, "SITE_URL", "http://localhost:8000")
-            self.my_referral_link = f"{base_url}/api/auth/register/{self.referral_code}/"
-
-        super().save(*args, **kwargs)
 
 
     def __str__(self):
@@ -100,13 +80,3 @@ class PasswordResetCode(models.Model):
     def is_expired(self):
         return self.created_at + timedelta(minutes=2) < timezone.now()
     
-    
-    
-class PromoCode(models.Model):
-    code = models.CharField(max_length=50, unique=True)
-    duration_days = models.PositiveIntegerField(default=30)  
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.code

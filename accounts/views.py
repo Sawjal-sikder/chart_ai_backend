@@ -181,29 +181,4 @@ class UserDetailView(APIView):
     
     
     
-    
-class PromoCodeView(generics.ListCreateAPIView):
-    queryset = PromoCode.objects.all().order_by('-created_at')
-    serializer_class = PromoCodeSerializer
-    
-    
-class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = PromoCode.objects.all()
-    serializer_class = PromoCodeSerializer
-    lookup_field = "pk"
-    
-    
-    def update(self, request, *args, **kwargs):
-        response = super().update(request, *args, **kwargs)
-        return Response(
-            {"message": "Promo code updated successfully", "data": response.data},
-            status=status.HTTP_200_OK
-        )
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.perform_destroy(instance)
-        return Response(
-            {"message": "Promo code deleted successfully"},
-            status=status.HTTP_200_OK
-        )
+   

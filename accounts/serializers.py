@@ -335,7 +335,6 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
         return instance
     
 class UserSerializer(serializers.ModelSerializer):
-    count_referrals = serializers.SerializerMethodField()
     class Meta:
         model = CustomUser
         fields = ['id',
@@ -343,14 +342,6 @@ class UserSerializer(serializers.ModelSerializer):
                   'full_name',
                   'phone_number', 
                   'profile_picture',
-                  'my_referral_link',
-                  'referral_code',
-                  'referred_by',
-                  'favorite_item', 
-                  'count_referrals',
-                  'is_unlimited',
-                  'package_expiry',
-                  'premium_expiry',
                   'is_active'
                   ]
         
@@ -358,7 +349,6 @@ class UserSerializer(serializers.ModelSerializer):
         return CustomUser.objects.filter(referred_by=obj.referral_code).count()
 
 class UserDetailSerializer(serializers.ModelSerializer):
-    count_referrals = serializers.SerializerMethodField()
     class Meta:
         model = CustomUser
         fields = ['id', 
@@ -366,24 +356,5 @@ class UserDetailSerializer(serializers.ModelSerializer):
                   'full_name', 
                   'phone_number', 
                   'profile_picture',
-                  'my_referral_link',
-                  'referral_code',
-                  'referred_by',
-                  'favorite_item', 
-                  'count_referrals',
-                  'is_unlimited',
-                  'package_expiry',
-                  'is_premium',
-                  'premium_expiry',
                   'is_active'
                   ]
-        
-    def get_count_referrals(self, obj):
-        return CustomUser.objects.filter(referred_by=obj.referral_code).count()
-    
-    
-class PromoCodeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PromoCode
-        fields = ['id', 'code', 'duration_days', 'is_active', 'created_at']
-        readOnly_fields = ['id', 'created_at']
