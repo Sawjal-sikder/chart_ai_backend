@@ -15,6 +15,11 @@ django-allauth==65.10.0
 djangorestframework_simplejwt==5.5.1
 PyJWT==2.10.1
 
+# Google OAuth
+google-auth==2.34.0
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+
 # Translation Support
 django-parler==2.3
 django-parler-rest==2.2
