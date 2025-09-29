@@ -16,37 +16,36 @@ User = get_user_model()
 
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
         auth_code = request.data.get("auth_code")
-
         if not auth_code:
-            return Response({"error": "auth_code is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "auth_code is required"}, status=400)
 
-        # Step 1: Exchange auth_code for tokens
+        # Exchange auth_code for tokens
         token_url = "https://oauth2.googleapis.com/token"
         data = {
             "code": auth_code,
             "client_id": settings.GOOGLE_CLIENT_ID,
             "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
+            "redirect_uri": "",  # can be empty for mobile apps
             "grant_type": "authorization_code",
         }
 
-        token_resp = requests.post(token_url, data=data)
-        if token_resp.status_code != 200:
-            return Response(
-                {"error": "Failed to exchange auth_code", "details": token_resp.json()},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        try:
+            token_resp = requests.post(token_url, data=data)
+            token_resp.raise_for_status()
+        except requests.RequestException as e:
+            return Response({"error": "Failed to exchange auth_code", "details": str(e)}, status=400)
 
         token_data = token_resp.json()
         id_token_value = token_data.get("id_token")
         access_token = token_data.get("access_token")
 
         if not id_token_value:
-            return Response({"error": "No id_token received"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "No id_token received"}, status=400)
 
-        # Step 2: Verify ID token
+        # Verify ID token
         try:
             id_info = id_token.verify_oauth2_token(
                 id_token_value, google_requests.Request(), settings.GOOGLE_CLIENT_ID
@@ -54,25 +53,22 @@ class GoogleLoginView(APIView):
             email = id_info.get("email")
             name = id_info.get("name")
         except Exception as e:
-            return Response({"error": "Invalid ID token", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid ID token", "details": str(e)}, status=400)
 
-        # Step 3: Get or create user
-        user, created = User.objects.get_or_create(email=email, defaults={"username": email, "first_name": name})
+        # Get or create user
+        user, _ = User.objects.get_or_create(email=email, defaults={"full_name": name})
 
-        # Step 4: Generate JWT tokens
+        # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
 
-        return Response(
-            {
-                "message": "Google login successful",
-                "email": email,
-                "name": name,
-                "access_token": str(refresh.access_token),
-                "refresh_token": str(refresh),
-                "google_access_token": access_token,  
-            }
-        )
-        
+        return Response({
+            "message": "Google login successful",
+            "email": email,
+            "full_name": name,
+            "access_token": str(refresh.access_token),
+            "refresh_token": str(refresh),
+            "google_access_token": access_token
+        })
         
         
 class AppleLoginView(APIView):
