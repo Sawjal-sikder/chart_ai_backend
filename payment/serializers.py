@@ -26,7 +26,7 @@ class PlanSerializer(serializers.ModelSerializer):
 class PlanUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
-        fields = ["name", "interval","interval_count", "amount", "description", "active"]
+        fields = ["name", "interval","interval_count", "amount", "trial_days", "description", "active"]
 
 class SubscriptionSerializer(serializers.ModelSerializer):
     plan = PlanSerializer(read_only=True)

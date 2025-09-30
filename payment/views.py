@@ -181,6 +181,7 @@ class PlanUpdateView(generics.RetrieveUpdateAPIView):
         plan = self.get_object()
         old_amount = getattr(plan, "amount", None)
 
+        # Save all updated fields to DB first
         updated_plan = serializer.save()
 
         try:
@@ -196,7 +197,10 @@ class PlanUpdateView(generics.RetrieveUpdateAPIView):
                     product=plan.stripe_product_id,
                     unit_amount=int(self.request.data["amount"]),
                     currency="usd",
-                    recurring={"interval": updated_plan.interval}
+                    recurring={
+                        "interval": updated_plan.interval,
+                        "interval_count": updated_plan.interval_count
+                    }
                 )
                 updated_plan.stripe_price_id = new_price.id
                 updated_plan.save()
