@@ -50,6 +50,7 @@ class Subscription(models.Model):
         default="pending",
         choices=[
             ("pending", "Pending"),
+            ("trialing", "Trialing"),
             ("active", "Active"),
             ("past_due", "Past Due"),
             ("canceled", "Canceled"),
@@ -79,13 +80,16 @@ class Subscription(models.Model):
 
     def is_paid_active(self):
         return self.status == "active"
+    
+    def is_trialing(self):
+        return self.status == "trialing"
 
     @classmethod
     def get_user_active_subscription(cls, user):
-        """Get user's active subscription active"""
+        """Get user's active subscription active or on trial"""
         return cls.objects.filter(
             user=user, 
-            status='active'
+            status__in=['active', 'trialing']
         ).first()
 
     def __str__(self):
