@@ -27,6 +27,34 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 User = get_user_model()
 
+def calculate_current_period_end(plan, start_date=None):
+    """
+    Calculate the current period end date based on plan interval
+    
+    Args:
+        plan: Plan object containing interval and interval_count
+        start_date: Starting date (defaults to current time)
+    
+    Returns:
+        datetime: The calculated end date for the current period
+    """
+    if not start_date:
+        start_date = timezone.now()
+    
+    if plan.interval == "day":
+        return start_date + datetime.timedelta(days=plan.interval_count)
+    elif plan.interval == "week":
+        return start_date + datetime.timedelta(weeks=plan.interval_count)
+    elif plan.interval == "month":
+        # For monthly subscriptions, add approximately 30 days per month
+        # You could also use dateutil.relativedelta for more accurate month calculations
+        return start_date + datetime.timedelta(days=30 * plan.interval_count)
+    elif plan.interval == "year":
+        return start_date + datetime.timedelta(days=365 * plan.interval_count)
+    else:
+        # Default fallback - 30 days
+        return start_date + datetime.timedelta(days=30)
+
 def process_referral_benefits(user, subscription):
     """
     Process referral benefits when a user purchases a subscription.
@@ -178,12 +206,17 @@ class PlanUpdateView(generics.RetrieveUpdateAPIView):
             print("Stripe update error:", e)
 
 
-
 class CreateSubscriptionView(APIView):
     def post(self, request):
         plan_id = request.data.get("plan_id")  # Pass Plan PK from frontend
-        success_url = request.data.get("success_url", f"{request.build_absolute_uri('/api/payment/payment-success/')}")
-        cancel_url = request.data.get("cancel_url", f"{request.build_absolute_uri('/api/payment/payment-cancel/')}")
+        success_url = request.data.get(
+            "success_url",
+            f"{request.build_absolute_uri('/api/payment/payment-success/')}"
+        )
+        cancel_url = request.data.get(
+            "cancel_url",
+            f"{request.build_absolute_uri('/api/payment/payment-cancel/')}"
+        )
         
         try:
             plan = Plan.objects.get(pk=plan_id, active=True)
@@ -217,7 +250,6 @@ class CreateSubscriptionView(APIView):
 
         try:
             # ✅ Create or get Stripe customer
-            customer = None
             existing_sub = Subscription.objects.filter(user=request.user).first()
             
             if existing_sub and existing_sub.stripe_customer_id:
@@ -235,7 +267,19 @@ class CreateSubscriptionView(APIView):
                     }
                 )
 
-            # ✅ Create Stripe Checkout Session with trial period
+            # ✅ Prepare subscription_data
+            subscription_data = {
+                "metadata": {
+                    "user_id": request.user.id,
+                    "plan_id": plan.id,
+                }
+            }
+
+            # Only add trial if it's > 0
+            if plan.trial_days and plan.trial_days > 0:
+                subscription_data["trial_period_days"] = plan.trial_days
+
+            # ✅ Create Stripe Checkout Session
             checkout_session = stripe.checkout.Session.create(
                 customer=customer.id,
                 payment_method_types=['card'],
@@ -246,32 +290,27 @@ class CreateSubscriptionView(APIView):
                 mode='subscription',
                 success_url=success_url + '?session_id={CHECKOUT_SESSION_ID}',
                 cancel_url=cancel_url,
-                subscription_data={
-                    'trial_period_days': plan.trial_days,
-                    'metadata': {
-                        'user_id': request.user.id,
-                        'plan_id': plan.id,
-                    }
-                },
+                subscription_data=subscription_data,
                 metadata={
                     'user_id': request.user.id,
                     'plan_id': plan.id,
                 },
-                # Enable automatic tax calculation (optional)
-                automatic_tax={'enabled': False},
-                # Customer can update payment method
+                automatic_tax={'enabled': False},  # Optional
                 allow_promotion_codes=True,
             )
 
             # ✅ Save pending subscription in DB (will be updated by webhook)
+            # Calculate initial current_period_end based on plan
+            initial_current_period_end = calculate_current_period_end(plan)
+            
             subscription = Subscription.objects.create(
                 user=request.user,
                 plan=plan,
                 stripe_customer_id=customer.id,
                 stripe_subscription_id=None,  # Will be set by webhook
-                status="pending",  # Will be updated to "trialing" by webhook
+                status="pending",  # Will be updated by webhook
                 trial_end=None,  # Will be set by webhook
-                current_period_end=None,  # Will be set by webhook
+                current_period_end=initial_current_period_end,  # Set initial value, will be updated by webhook
             )
 
             return Response({
@@ -279,8 +318,12 @@ class CreateSubscriptionView(APIView):
                 "checkout_session_id": checkout_session.id,
                 "subscription_id": subscription.id,
                 "plan": plan.name,
-                "trial_days": plan.trial_days,
-                "message": f"Redirecting to Stripe checkout with {plan.trial_days} days trial period"
+                "trial_days": plan.trial_days if plan.trial_days > 0 else None,
+                "message": (
+                    f"Redirecting to Stripe checkout with {plan.trial_days} days trial period"
+                    if plan.trial_days > 0 else
+                    "Redirecting to Stripe checkout without trial"
+                )
             }, status=201)
 
         except stripe.error.StripeError as e:
@@ -289,6 +332,7 @@ class CreateSubscriptionView(APIView):
             return Response({"error": f"Missing field: {str(e)}"}, status=400)
         except Exception as e:
             return Response({"error": str(e)}, status=400)
+
 
 
 class CheckoutSessionStatusView(APIView):
@@ -578,6 +622,13 @@ def stripe_webhook(request):
                             current_period_end = make_aware(
                                 datetime.datetime.fromtimestamp(stripe_subscription.current_period_end)
                             )
+                        else:
+                            # Fallback: calculate based on plan if Stripe doesn't provide it
+                            if subscription.plan:
+                                current_period_end = calculate_current_period_end(
+                                    subscription.plan, 
+                                    subscription.created_at
+                                )
                         
                         subscription.stripe_subscription_id = stripe_subscription.id
                         subscription.status = stripe_subscription.status
@@ -587,15 +638,6 @@ def stripe_webhook(request):
                         
                         logger.info(f"Updated subscription {subscription.id} with Stripe data")
                         
-                        # Process referral benefits after successful subscription creation
-                        try:
-                            user = User.objects.get(id=user_id)
-                            process_referral_benefits(user, subscription)
-                        except User.DoesNotExist:
-                            logger.error(f"User with id {user_id} not found for referral processing")
-                        except Exception as e:
-                            logger.error(f"Error in referral processing: {str(e)}")
-                            
                     else:
                         logger.warning(f"No pending subscription found for user {user_id}")
                         
@@ -619,6 +661,17 @@ def stripe_webhook(request):
                     current_period_end = make_aware(
                         datetime.datetime.fromtimestamp(obj["current_period_end"])
                     )
+                else:
+                    # Fallback: calculate based on plan if Stripe doesn't provide it
+                    try:
+                        subscription = Subscription.objects.get(stripe_subscription_id=obj["id"])
+                        if subscription.plan:
+                            current_period_end = calculate_current_period_end(
+                                subscription.plan, 
+                                subscription.created_at
+                            )
+                    except Subscription.DoesNotExist:
+                        pass
                 
                 Subscription.objects.update_or_create(
                     stripe_subscription_id=obj["id"],
@@ -633,8 +686,8 @@ def stripe_webhook(request):
                 # Process referral benefits for subscription.created event
                 try:
                     subscription = Subscription.objects.get(stripe_subscription_id=obj["id"])
-                    if subscription.user:
-                        process_referral_benefits(subscription.user, subscription)
+                    # if subscription.user:
+                    #     process_referral_benefits(subscription.user, subscription)
                 except Subscription.DoesNotExist:
                     logger.error(f"Subscription with Stripe ID {obj['id']} not found for referral processing")
                 except Exception as e:
@@ -698,3 +751,70 @@ def stripe_webhook(request):
 
     logger.info(f"Webhook processing completed successfully for event: {event_type}")
     return HttpResponse(status=200)
+
+
+
+class SubscriptionListView(generics.ListAPIView):
+    """List all subscriptions (admin only)"""
+    queryset = Subscription.objects.all().order_by('-created_at')
+    serializer_class = SubscriptionSerializer
+    # permission_classes = [permissions.IsAdminUser]
+    # pagination_class = None  # Disable pagination for simplicity
+    
+    
+
+class SubscriptionStopAutoRenewalView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        
+        try:
+            active_subscription = Subscription.get_user_active_subscription(request.user)
+            request_auto_renew = request.data.get("auto_renew", False)
+            
+            if not active_subscription or not active_subscription.stripe_subscription_id:
+                return Response({"error": "No active subscription found"}, status=404)
+            
+            # The request parameter indicates what the user wants auto_renew to be set to
+            if request_auto_renew == False:
+                # User wants to stop auto-renewal
+                stripe.Subscription.modify(
+                    active_subscription.stripe_subscription_id,
+                    cancel_at_period_end=True
+                )
+
+                active_subscription.auto_renew = False
+                active_subscription.save()
+                return Response({
+                    "message": "Auto-renewal stopped. Subscription will cancel at the end of the current period",
+                    "subscription": {
+                        "id": active_subscription.id,
+                        "auto_renew": active_subscription.auto_renew,
+                        "current_period_end": active_subscription.current_period_end
+                    }
+                }, status=200)
+            else:
+                # User wants to enable auto-renewal
+                stripe.Subscription.modify(
+                    active_subscription.stripe_subscription_id,
+                    cancel_at_period_end=False
+                )
+
+                active_subscription.auto_renew = True
+                active_subscription.save()
+            
+                return Response({
+                    "message": "Auto-renewal enabled. Subscription will continue at the end of the current period",
+                    "subscription": {
+                        "id": active_subscription.id,
+                        "auto_renew": active_subscription.auto_renew,
+                        "current_period_end": active_subscription.current_period_end
+                    }
+                }, status=200)
+            
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error in stop auto-renewal: {str(e)}")
+            return Response({"error": f"Stripe error: {str(e)}"}, status=400)
+        except Exception as e:
+            logger.error(f"Error in stop auto-renewal: {str(e)}")
+            return Response({"error": str(e)}, status=500)

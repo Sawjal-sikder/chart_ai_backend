@@ -58,11 +58,22 @@ class Subscription(models.Model):
     )  # pending → trialing → active → canceled
     trial_end = models.DateTimeField(blank=True, null=True)
     current_period_end = models.DateTimeField(blank=True, null=True)
+    auto_renew = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def is_active(self):
         return self.status in ["active"]
+
+    def is_trial(self):
+        """Check if subscription is in trial period"""
+        from django.utils import timezone
+        if not self.trial_end:
+            return False
+        return (
+            self.status in ["trialing", "active"] and 
+            self.trial_end > timezone.now()
+        )
 
 
 

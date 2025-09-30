@@ -39,6 +39,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "stripe_customer_id",
             "stripe_subscription_id",
             "status",
+            "auto_renew",
             "trial_end",
             "current_period_end",
             "created_at",
