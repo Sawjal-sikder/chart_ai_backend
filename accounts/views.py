@@ -181,4 +181,25 @@ class UserDetailView(APIView):
     
     
     
-   
+class DeleteAccountView(generics.DestroyAPIView):
+
+    def get_object(self):
+        # Get the user making the request
+        user = self.request.user
+        password = self.request.data.get("password")
+        conform_password = self.request.data.get("conform_password")
+        
+        # Validate password and conform_password
+        if not password or not conform_password:
+            raise ValidationError({"detail": "Both password and conform_password are required."})
+        if password != conform_password:
+            raise ValidationError({"detail": "Passwords do not match."})
+        if user.check_password(password) is False:
+            raise ValidationError({"detail": "Incorrect password."})
+        return user
+    
+    # account deletion
+    def delete(self, request, *args, **kwargs):
+        user = self.get_object()
+        user.delete()
+        return Response({"detail": "Account deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
