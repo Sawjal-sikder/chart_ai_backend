@@ -45,3 +45,8 @@ class TradeStrategyDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response({"message": "TradeStrategy updated successfully", "data": serializer.data})
+
+# TradingResponse View
+class TradingResponseListView(generics.ListAPIView):
+    queryset = TradingResponse.objects.all()
+    serializer_class = TradingResponseSerializer

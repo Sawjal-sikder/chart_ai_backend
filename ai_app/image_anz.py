@@ -20,13 +20,6 @@ def ImageAnalysisView(request):
             trading_strategy=trading_strategy
         )
         
-        # Convert model instance to dict for JSON response
-        trading_request_data = {
-            "id": trading_request.id,
-            "file_name": trading_request.file.name if trading_request.file else None,
-            "trading_style": trading_request.trading_style,
-            "trading_strategy": trading_request.trading_strategy,
-        }
         
         # Reset file pointer to beginning
         file.seek(0)
@@ -43,7 +36,7 @@ def ImageAnalysisView(request):
         }
 
         # Call external analysis API
-        api_url = "http://10.10.7.75:8000/api/v1/trade-analysis"  # Removed trailing slash
+        api_url = "http://10.10.7.75:8000/api/v1/trade-analysis" 
         try:
             logger.info(f"Making API request to {api_url} with data: {data}")
             response = requests.post(api_url, files=files, data=data, timeout=60)
@@ -82,8 +75,26 @@ def ImageAnalysisView(request):
                 "error": f"Unexpected error during API call: {str(e)}"
             }
 
-        return JsonResponse({
-            "message": "Image analysis completed successfully",
-            "data": api_response_data
-        })    
+
+        TradingResponse_data = TradingResponse.objects.create(
+            request=trading_request,
+            response_data=api_response_data
+        )
+        
+        request_id = trading_request.id
+        request_all_data = TradingRequest.objects.get(id=request_id)
+        request_data = {
+                    "id": request_all_data.id,
+                    "file": request_all_data.file.url if request_all_data.file else None,
+                    "trading_style": request_all_data.trading_style,
+                    "trading_strategy": request_all_data.trading_strategy,
+                }
+
+        data = {
+            "id": TradingResponse_data.id,
+            "request_data": request_data,
+            "response_data": TradingResponse_data.response_data,
+        }
+
+        return JsonResponse({"data": data})
     return JsonResponse({"error": "Invalid request method"}, status=400)

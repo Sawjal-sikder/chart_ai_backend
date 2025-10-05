@@ -13,4 +13,7 @@ urlpatterns = [
     
     # Image Analysis endpoint
     path("image/analysis/", ImageAnalysisView, name="image-analysis"),
+    
+    # TradingResponse endpoint
+    path("trade/result/", TradingResponseListView.as_view(), name="response-list"),
 ]

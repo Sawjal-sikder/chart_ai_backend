@@ -12,3 +12,9 @@ class TradeStrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = TradeStrategy
         fields = '__all__'
+
+
+class TradingResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TradingResponse
+        fields = '__all__'
