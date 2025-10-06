@@ -25,3 +25,15 @@ class TradingResponseSerializer(serializers.ModelSerializer):
         model = TradingResponse
         fields = ['id', 'request_data', 'response_data']
         read_only_fields = ['id']
+
+
+
+class ChatbotInteractionSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    class Meta:
+        model = ChatbotInteraction
+        fields = ['id', 'user', 'user_input', 'bot_response', 'created_at']  
+        read_only_fields = ['id', 'created_at']
+
+    def get_user(self, obj):
+        return obj.user.full_name if obj.user else 'Anonymous'

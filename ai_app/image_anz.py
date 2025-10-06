@@ -5,6 +5,7 @@ from django.conf import settings
 import requests
 import logging
 import os
+from payment.paymentPermission import HasActiveSubscription
 
 from .models import TradingRequest, TradingResponse
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImageAnalysisView(APIView):
+    permission_classes = [HasActiveSubscription]
 
 
     def post(self, request):

@@ -37,3 +37,14 @@ class TradingResponse(models.Model):
     
     def __str__(self):
         return f"TradingResponse {self.id} for Request {self.request.id}"
+    
+    
+    
+class ChatbotInteraction(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user_input = models.TextField()
+    bot_response = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Interaction by {self.user} at {self.created_at}"

@@ -1,3 +1,4 @@
+from payment.paymentPermission import HasActiveSubscription
 from rest_framework.response import Response
 from rest_framework import generics
 from .serializers import *
@@ -49,6 +50,7 @@ class TradeStrategyDetailView(generics.RetrieveUpdateDestroyAPIView):
 # TradingResponse View
 class TradingResponseListView(generics.ListAPIView):
     serializer_class = TradingResponseSerializer
+    permission_classes = [HasActiveSubscription]
     
     def get_queryset(self):
         user = self.request.user
@@ -59,8 +61,21 @@ class TradingResponseListView(generics.ListAPIView):
 class TradingResponseDetailView(generics.RetrieveDestroyAPIView):
     queryset = TradingResponse.objects.all()
     serializer_class = TradingResponseSerializer
+    permission_classes = [HasActiveSubscription]
 
     def delete(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response({"message": "TradingResponse deleted successfully"}, status=204)
+    
+    
+# Note: ChatbotView has been moved to chatbot.py for better organization.
+class ChatbotInteractionListView(generics.ListAPIView):
+    serializer_class = ChatbotInteractionSerializer
+    permission_classes = [HasActiveSubscription]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return ChatbotInteraction.objects.filter(user=user).order_by('-created_at')
+        return ChatbotInteraction.objects.none()
