@@ -67,6 +67,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'project.urls'
+CSRF_TRUSTED_ORIGINS = ['https://chart.dsrt321.online', 'https://*']
 
 TEMPLATES = [
     {
