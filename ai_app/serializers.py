@@ -14,7 +14,14 @@ class TradeStrategySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class TradingRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TradingRequest
+        fields = ['file', 'trading_style', 'trading_strategy']
+
 class TradingResponseSerializer(serializers.ModelSerializer):
+    request_data = TradingRequestSerializer(source='request', read_only=True)
     class Meta:
         model = TradingResponse
-        fields = '__all__'
+        fields = ['id', 'request_data', 'response_data']
+        read_only_fields = ['id']

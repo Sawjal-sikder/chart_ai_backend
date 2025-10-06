@@ -48,5 +48,19 @@ class TradeStrategyDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 # TradingResponse View
 class TradingResponseListView(generics.ListAPIView):
+    serializer_class = TradingResponseSerializer
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return TradingResponse.objects.filter(user=user).order_by('-created_at')
+        return TradingResponse.objects.none()
+
+class TradingResponseDetailView(generics.RetrieveDestroyAPIView):
     queryset = TradingResponse.objects.all()
     serializer_class = TradingResponseSerializer
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"message": "TradingResponse deleted successfully"}, status=204)

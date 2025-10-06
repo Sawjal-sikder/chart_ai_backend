@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 # Create your models here.
 class TradeStyle(models.Model):
@@ -17,6 +20,7 @@ class TradeStrategy(models.Model):
 
 
 class TradingRequest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     file = models.FileField(upload_to='uploads/')
     trading_style = models.CharField(max_length=255)
     trading_strategy = models.CharField(max_length=255)
@@ -26,6 +30,7 @@ class TradingRequest(models.Model):
         return f"TradingRequest {self.id} - {self.trading_style} - {self.trading_strategy}"
     
 class TradingResponse(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     request = models.ForeignKey(TradingRequest, on_delete=models.CASCADE)
     response_data = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)

@@ -12,8 +12,9 @@ urlpatterns = [
     path("trade/strategies/<int:pk>/", TradeStrategyDetailView.as_view(), name="strategy-detail"),
     
     # Image Analysis endpoint
-    path("image/analysis/", ImageAnalysisView, name="image-analysis"),
+    path("image/analysis/", ImageAnalysisView.as_view(), name="image-analysis"),
     
     # TradingResponse endpoint
     path("trade/result/", TradingResponseListView.as_view(), name="response-list"),
+    path("trade/result/<int:pk>/", TradingResponseDetailView.as_view(), name="response-detail"),
 ]
