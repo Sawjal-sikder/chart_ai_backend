@@ -7,11 +7,7 @@ import NotFound from "../pages/NotFound";
 // Get the base URL from Vite's environment
 const baseUrl = import.meta.env.BASE_URL;
 import Profile from "../pages/profile/Profile";
-import UsersPage from "../pages/users/Users";
-import Venues from "../pages/venues/Venues";
-import Service from "../pages/users/services";
-import City from "../pages/city/City";
-import GeoFences from "../pages/geofences/GeoFences";
+import UsersPage from "../pages/user_list/Main";
 import PrivacyPolicy from "../pages/privacyPolicy/PrivacyPolicy";
 import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -34,25 +30,13 @@ export const router = createBrowserRouter(
         //   element: <Dashboard />,
         // },
         {
-          path: "",
+          path: "users",
           element: <UsersPage />,
-        },
-        {
-          path: "venue",
-          element: <Service />,
-        },
-        {
-          path: "profile",
-          element: <Profile />,
-        },
-        {
-          path: "city",
-          element: <City />,
         },
 
         {
-          path: "geo-fences",
-          element: <GeoFences />,
+          path: "profile",
+          element: <Profile />,
         },
         {
           path: "privacy-policy",

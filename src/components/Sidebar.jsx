@@ -22,6 +22,8 @@ const Sidebar = ({ onClick }) => {
   const navigate = useNavigate();
   const handleSignOut = () => {
     // signOutAdmin();
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user");
     navigate("/login");
   };
 
@@ -29,11 +31,8 @@ const Sidebar = ({ onClick }) => {
   const getSelectedKey = () => {
     const path = location.pathname;
     // if (path === "/") return ["dashboard"];
-    if (path === "/") return ["users"];
-    if (path === "/venue") return ["venue"];
+    if (path === "/users") return ["users"];
     if (path === "/profile") return ["settings", "setting-profile"];
-    if (path === "/city") return ["settings", "city"];
-    if (path === "/geo-fences") return ["settings", "geo-fences"];
     if (path === "/privacy-policy") return ["settings", "privacy-policy"];
     return ["dashboard"];
   };
@@ -47,52 +46,22 @@ const Sidebar = ({ onClick }) => {
     {
       key: "users",
       icon: <FaUsers />,
-      label: <Link to="/">User Management</Link>,
+      label: <Link to="/users">User Management</Link>,
     },
-    {
-      key: "venue",
-      icon: <TbPackages />,
-      label: <Link to="/venue">Venue</Link>,
-    },
-    {
-      key: "city",
-      icon: <TbPackages />,
-      label: <Link to="/city">City</Link>,
-    },
-    {
-      key: "geo-fences",
-      icon: <TbPackages />,
-      label: <Link to="/geo-fences">Geo Fences</Link>,
-    },
-    // {
-    //   key: "settings",
-    //   icon: <SettingOutlined />,
-    //   label: "Settings",
-    //   className: "custom-submenu ", // Add this
-    //   popupClassName: "custom-submenu-popup bg-red-500", // Add this
-    //   children: [
-    //     {
-    //       key: "setting-profile",
-    //       label: <Link to="/profile">Profile</Link>,
-    //     },
-    //     {
-    //       key: "terms-conditions",
-    //       label: <Link to="/terms-conditions">Terms & Conditions</Link>,
-    //     },
-    //     {
-    //       key: "privacy-policy",
-    //       label: <Link to="/privacy-policy">Privacy Policy</Link>,
-    //     },
-    //   ],
-    // },
 
-    // Add logout as a menu item at the bottom
+    // Logout item pinned to bottom — use a clickable label so the handler runs reliably
     {
       key: "logout",
       icon: <LogoutOutlined />,
-      label: "Logout",
+      label: (
+        <span
+          onClick={handleSignOut}
+          className="flex items-center px-3 py-2 w-full hover:bg-gray-100"
+        >
+          Logout
+        </span>
+      ),
       className: "bottom-20",
-      onClick: handleSignOut,
       style: {
         position: "absolute",
         width: "100%",
@@ -118,10 +87,10 @@ const Sidebar = ({ onClick }) => {
           backgroundColor: "#ffffff",
           color: "#002436",
         }}
-      // theme="dark"
       />
     </div>
   );
 };
 
 export default Sidebar;
+

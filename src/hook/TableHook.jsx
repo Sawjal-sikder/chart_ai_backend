@@ -27,7 +27,7 @@ const ReusableTable = ({ columns, data, actions }) => {
                                     >
                                           {columns.map((col, colIndex) => (
                                                 <td key={colIndex} className="px-4 py-5 ">
-                                                      {col.render ? col.render(row, rowIndex) : row[col.accessor]}
+                                                      {col.render ? col.render(row, rowIndex) : (row[col.accessor] || row[col.accessor] === 0 ? row[col.accessor] : "-")}
                                                 </td>
                                           ))}
                                           {actions && (
