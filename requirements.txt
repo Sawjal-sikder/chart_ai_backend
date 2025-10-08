@@ -77,3 +77,6 @@ python-dateutil==2.9.0.post0
 six==1.17.0
 packaging==25.0
 typing_extensions==4.15.0
+
+# admin.py
+django-jazzmin
