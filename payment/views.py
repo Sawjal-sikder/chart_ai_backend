@@ -769,6 +769,73 @@ class SubscriptionListView(generics.ListAPIView):
     # pagination_class = None  # Disable pagination for simplicity
     
     
+class SubscriptionUpdateView(generics.RetrieveUpdateAPIView):
+    queryset = Subscription.objects.all()
+    serializer_class = SubscriptionUpdateSerializer
+    lookup_field = "id"
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        old_auto_renew = instance.auto_renew  # store current value before update
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # After saving, check if auto_renew changed
+        new_auto_renew = serializer.validated_data.get('auto_renew', old_auto_renew)
+
+        # If changed, trigger stop/enable logic
+        if old_auto_renew != new_auto_renew:
+            # Instead of redirecting, we can call SubscriptionStopAutoRenewalView logic directly
+            return self.handle_auto_renew_change(request, new_auto_renew)
+
+        # Otherwise, normal response
+        full_serializer = SubscriptionSerializer(instance)
+        return Response({
+            "message": "Subscription updated successfully",
+            "subscription": full_serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def handle_auto_renew_change(self, request, new_auto_renew):
+        """Handle auto-renew change by reusing the stop auto-renew logic"""
+        try:
+            active_subscription = Subscription.get_user_active_subscription(request.user)
+
+            if not active_subscription or not active_subscription.stripe_subscription_id:
+                return Response({"error": "No active subscription found"}, status=404)
+
+            stripe.Subscription.modify(
+                active_subscription.stripe_subscription_id,
+                cancel_at_period_end=not new_auto_renew
+            )
+
+            active_subscription.auto_renew = new_auto_renew
+            active_subscription.save()
+
+            message = (
+                "Auto-renewal enabled. Subscription will continue at the end of the current period"
+                if new_auto_renew else
+                "Auto-renewal stopped. Subscription will cancel at the end of the current period"
+            )
+
+            return Response({
+                "message": message,
+                "subscription": {
+                    "id": active_subscription.id,
+                    "auto_renew": active_subscription.auto_renew,
+                    "current_period_end": active_subscription.current_period_end
+                }
+            }, status=200)
+
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error in auto-renew change: {str(e)}")
+            return Response({"error": f"Stripe error: {str(e)}"}, status=400)
+        except Exception as e:
+            logger.error(f"Error in auto-renew change: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+    
 
 class SubscriptionStopAutoRenewalView(APIView):
     permission_classes = [permissions.IsAuthenticated]

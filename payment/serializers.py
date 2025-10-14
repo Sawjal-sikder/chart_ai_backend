@@ -55,6 +55,23 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return representation
 
 
+class SubscriptionUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ['id', 'status', 'auto_renew']
+        read_only_fields = (
+            "user",
+            "stripe_customer_id", 
+            "stripe_subscription_id",
+            "trial_end",
+            "current_period_end",
+            "created_at",
+            "updated_at",
+        )
+        
+        
+
+
 class SubscriptionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription

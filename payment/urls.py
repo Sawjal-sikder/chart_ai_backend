@@ -9,6 +9,7 @@ urlpatterns = [
       path("subscription-status/", UserSubscriptionStatusView.as_view(), name="subscription-status"),
       path("webhook/", stripe_webhook, name="stripe-webhook"),
       path("subscriptions/list/", SubscriptionListView.as_view(), name="subscription-list"),
+      path("subscriptions/update/<int:id>/", SubscriptionUpdateView.as_view(), name="subscription-update"),
       path("subscription/stop-autorenew/", SubscriptionStopAutoRenewalView.as_view(), name="auto-renew"),
       
       # stripe subscription plans
