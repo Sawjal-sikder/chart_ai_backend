@@ -18,6 +18,15 @@ class TradingRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = TradingRequest
         fields = ['file', 'trading_style', 'trading_strategy']
+        
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.file:
+            # Ensure only relative URL (starts with /media/)
+            representation['file'] = instance.file.url.replace(self.context['request'].build_absolute_uri('/'), '/')
+        else:
+            representation['file'] = None
+        return representation
 
 class TradingResponseSerializer(serializers.ModelSerializer):
     request_data = TradingRequestSerializer(source='request', read_only=True)
