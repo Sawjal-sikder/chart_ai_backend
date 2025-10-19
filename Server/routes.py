@@ -4,9 +4,6 @@ import sys
 from uuid import uuid4
 from pydantic import BaseModel
 
-
-
-
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -105,6 +102,10 @@ async def post_trade_analysis(
                 raise HTTPException(status_code=422, detail="No text could be extracted from the image")
 
             report = trade_analysis(file_path, extracted_texts, trading_style, trading_strategy)
+            
+
+
+
 
             response = {
                 "message": "Trade analysis successful",
@@ -113,6 +114,8 @@ async def post_trade_analysis(
             }
             
             return response
+        
+        
             
         except Exception as processing_error:
      
@@ -135,5 +138,22 @@ async def chat_endpoint(user_input: ChatRequest):
     try:
         response = get_response(user_input.user_input)
         return {"response": response}
+    except Exception as e:
+        return {"Error": str(e)}
+    
+
+
+@router.put("/apikey-update")
+async def update_api_key(new_api_key: str = Form(...)):
+    """
+    Update the API key for the language model at runtime.
+    """
+    try:
+        from Config import model as lang_model
+        if not new_api_key or not isinstance(new_api_key, str) or len(new_api_key) < 20:
+            raise HTTPException(status_code=400, detail="Invalid API key format")
+
+        lang_model.api_key = new_api_key
+        return {"message": "API key updated successfully"}
     except Exception as e:
         return {"Error": str(e)}

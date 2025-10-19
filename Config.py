@@ -6,3 +6,5 @@ load_dotenv()
 
 
 model = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+

@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="ChartAI Trading Analysis API", version="1.0.0")
+app = FastAPI(title="ChartAI Trading Analysis API", version="1.0.0", swagger_ui_parameters={"syntaxHighlight": {"theme": "obsidian"}})
 
 @app.on_event("startup")
 async def startup_event():
